@@ -1,0 +1,32 @@
+http:
+  routers:
+    api:
+      rule: "Host(`datasandbox.ex-lab.de`) && PathPrefix(`/api`)"
+      service: api
+      entryPoints:
+        - https
+      tls:
+        certResolver: letsencrypt
+
+    frontend:
+      rule: "Host(`datasandbox.ex-lab.de`)"
+      service: frontend
+      entryPoints:
+        - https
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    api:
+      loadBalancer:
+        servers:
+          - url: "http://localhost:5000"
+
+    frontend:
+      loadBalancer:
+        servers:
+          - url: "http://localhost:3000"
+
+
+
+
