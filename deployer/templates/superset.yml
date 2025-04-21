@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  superset:
+    image: apache/superset:latest
+    container_name: {{APP_NAME}}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.{{APP_NAME}}.rule=Host(`{{SUBDOMAIN}}.ex-lab.de`)"
+      - "traefik.http.routers.{{APP_NAME}}.entrypoints=websecure"
+      - "traefik.http.routers.{{APP_NAME}}.tls.certresolver=letsencrypt"
+      - "traefik.http.services.{{APP_NAME}}.loadbalancer.server.port=8088"
+    networks:
+      - web
+
+networks:
+  web:
+    external: true
