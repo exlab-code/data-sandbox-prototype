@@ -4,6 +4,10 @@ services:
   metabase:
     image: metabase/metabase:latest
     container_name: {{APP_NAME}}
+    deploy:
+      resources:
+        limits:
+          cpus: '2'      # 👈 limit to half a CPU core
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.{{APP_NAME}}.rule=Host(`{{SUBDOMAIN}}.ex-lab.de`)"
@@ -12,6 +16,12 @@ services:
       - "traefik.http.services.{{APP_NAME}}.loadbalancer.server.port=3000"
     networks:
       - web
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 networks:
   web:

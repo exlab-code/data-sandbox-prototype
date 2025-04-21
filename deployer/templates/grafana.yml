@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  {{APP_NAME}}:
+    image: grafana/grafana:latest
+    container_name: {{APP_NAME}}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.{{SUBDOMAIN}}.rule=Host(`{{SUBDOMAIN}}.ex-lab.de`)"
+      - "traefik.http.routers.{{SUBDOMAIN}}.entrypoints=websecure"
+      - "traefik.http.routers.{{SUBDOMAIN}}.tls.certresolver=letsencrypt"
+    networks:
+      - web
+
+networks:
+  web:
+    external: true

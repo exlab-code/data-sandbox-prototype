@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  {{APP_NAME}}:
+    image: lightdash/lightdash:latest
+    container_name: {{APP_NAME}}
+    environment:
+      - LIGHTDASH_SECRET=secret
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.{{SUBDOMAIN}}.rule=Host(`{{SUBDOMAIN}}.ex-lab.de`)"
+      - "traefik.http.routers.{{SUBDOMAIN}}.entrypoints=websecure"
+      - "traefik.http.routers.{{SUBDOMAIN}}.tls.certresolver=letsencrypt"
+      - "traefik.http.services.{{SUBDOMAIN}}.loadbalancer.server.port=3000"
+    networks:
+      - web
+
+networks:
+  web:
+    external: true

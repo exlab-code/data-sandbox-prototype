@@ -7,6 +7,7 @@ services:
     volumes:
       - .:/app
       - /var/run/docker.sock:/var/run/docker.sock
+      - /opt/instances:/opt/instances 
 
     working_dir: /app
     command: python3 backend.py
