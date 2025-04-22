@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3.3'
 
 services:
   backend:
@@ -15,7 +15,7 @@ services:
       - "5000"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`dashboard.ex-lab.de`) && PathPrefix(`/deploy`)"
+      - "traefik.http.routers.backend.rule=Host(`dashboard.ex-lab.de`) && (PathPrefix(`/deploy`) || PathPrefix(`/status/`))"
       - "traefik.http.routers.backend.entrypoints=websecure"
       - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
       - "traefik.http.services.backend.loadbalancer.server.port=5000"

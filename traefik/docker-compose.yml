@@ -4,14 +4,17 @@ services:
   traefik:
     image: traefik:v2.10
     command:
+      - "--log.level=DEBUG"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.dnschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.dnschallenge.provider=hetzner"
       - "--certificatesresolvers.letsencrypt.acme.email=admin@ex-lab.de"
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    environment:
+      - "HETZNER_API_KEY=k3H7heEHSlnwr1hPt0Lxqnotwwrxd0hw"
     ports:
       - "80:80"
       - "443:443"
@@ -20,6 +23,14 @@ services:
       - "./letsencrypt:/letsencrypt"
     networks:
       - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`dashboard.ex-lab.de`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.tls.domains[0].main=ex-lab.de"
+      - "traefik.http.routers.traefik.tls.domains[0].sans=*.ex-lab.de"
+      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
 
 networks:
   web:

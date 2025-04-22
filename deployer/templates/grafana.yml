@@ -4,13 +4,30 @@ services:
   {{APP_NAME}}:
     image: grafana/grafana:latest
     container_name: {{APP_NAME}}
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SERVER_ROOT_URL=https://{{SUBDOMAIN}}.ex-lab.de
+    volumes:
+      - grafana-data-{{APP_NAME}}:/var/lib/grafana
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.{{SUBDOMAIN}}.rule=Host(`{{SUBDOMAIN}}.ex-lab.de`)"
       - "traefik.http.routers.{{SUBDOMAIN}}.entrypoints=websecure"
       - "traefik.http.routers.{{SUBDOMAIN}}.tls.certresolver=letsencrypt"
+      - "traefik.http.services.{{SUBDOMAIN}}.loadbalancer.server.port=3000"
     networks:
       - web
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  grafana-data-{{APP_NAME}}:
 
 networks:
   web:

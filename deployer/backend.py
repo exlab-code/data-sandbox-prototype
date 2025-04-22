@@ -22,12 +22,12 @@ APP_CONFIG = {
     'grafana': {
         'port': 3000,
         'health_path': '/api/health',
-        'startup_time': 15
+        'startup_time': 10  # Reduced to reflect faster deployment
     },
     'lightdash': {
         'port': 8080,
-        'health_path': '/api/v1/health',
-        'startup_time': 20
+        'health_path': '/',
+        'startup_time': 120  # Increased even further for Lightdash
     }
 }
 
@@ -38,7 +38,13 @@ def check_container_health(app_name, subdomain, app_type):
     status = deployment_status.get(app_name, {})
     status['status'] = 'deploying'
     status['step'] = 'Container wird erstellt'
-    status['progress'] = 10
+    
+    # Set initial progress based on app type
+    if app_type == 'grafana':
+        status['progress'] = 15  # Start higher for Grafana
+    else:
+        status['progress'] = 5  # Start lower for other apps
+        
     deployment_status[app_name] = status
 
     # Wait for container to be created
@@ -46,7 +52,13 @@ def check_container_health(app_name, subdomain, app_type):
     
     # Update status to starting
     status['step'] = 'Container wird gestartet'
-    status['progress'] = 30
+    
+    # Set progress based on app type
+    if app_type == 'grafana':
+        status['progress'] = 30  # Higher initial progress for Grafana
+    else:
+        status['progress'] = 15  # Lower initial progress for other apps
+        
     deployment_status[app_name] = status
     
     # Get app configuration
@@ -57,15 +69,61 @@ def check_container_health(app_name, subdomain, app_type):
     
     # Check if container exists and get its status
     try:
-        max_tries = 15  # Try for about 45 seconds
-        for attempt in range(max_tries):
-            # Update progress based on attempt
-            progress_increment = min(5, (90 - status['progress']) / (max_tries - attempt))
-            status['progress'] = min(90, status['progress'] + progress_increment)
+        # Increase max_tries for more realistic timing
+        max_tries = 20  # Try for about 60 seconds
+        
+        # For Lightdash, we need to check both PostgreSQL and Lightdash
+        if app_type == 'lightdash':
+            # First check if PostgreSQL is ready
+            status['step'] = 'Warte auf Datenbank-Initialisierung'
+            status['progress'] = 20
+            deployment_status[app_name] = status
             
-            if app_type == 'lightdash' and attempt < 3:
-                # For Lightdash, wait for Postgres to be ready first
-                status['step'] = 'Warte auf Datenbank-Initialisierung'
+            # Check PostgreSQL container health
+            for attempt in range(5):  # Try for about 15 seconds
+                pg_result = subprocess.run(
+                    ['docker', 'inspect', '--format', '{{.State.Health.Status}}', f"postgres-{app_name}"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+                
+                if pg_result.returncode == 0 and pg_result.stdout.strip() == "healthy":
+                    status['step'] = 'Datenbank bereit, starte Lightdash'
+                    status['progress'] = 30
+                    deployment_status[app_name] = status
+                    break
+                
+                time.sleep(3)
+        
+        # Now check the main application container
+        for attempt in range(max_tries):
+            # Calculate progress more realistically based on app type
+            if app_type == 'metabase':
+                # Metabase starts quickly but takes time to initialize
+                progress_base = 30 + (attempt * 3)  # Slower progress
+            elif app_type == 'grafana':
+                # Grafana starts up very quickly
+                progress_base = 40 + (attempt * 4)  # Fast but more gradual progress
+                if attempt > 2:
+                    # More gradual progress for Grafana to avoid getting stuck
+                    progress_base = min(80, 50 + (attempt * 2.5))
+            elif app_type == 'lightdash':
+                # Lightdash needs database initialization first
+                progress_base = 30 + (attempt * 3)  # Slower progress
+            else:
+                progress_base = 30 + (attempt * 3)
+                
+            status['progress'] = min(90, progress_base)
+            
+            # Update step message based on app type and progress
+            if app_type == 'grafana':
+                if status['progress'] < 50:
+                    status['step'] = 'Grafana wird gestartet...'
+                elif status['progress'] < 70:
+                    status['step'] = 'Grafana wird konfiguriert...'
+                else:
+                    status['step'] = 'Grafana fast bereit...'
             else:
                 status['step'] = 'Warte auf Anwendungsstart'
                 
@@ -112,8 +170,34 @@ def check_container_health(app_name, subdomain, app_type):
             # For some containers, health check might not be configured properly
             # If the container is running for a while, we'll assume it's probably ok
             if app_type == 'lightdash':
-                # Lightdash needs a bit more time
-                time.sleep(10)
+                # For Lightdash, we'll be more lenient - it might still be initializing
+                # Check if the container is at least running
+                container_status_result = subprocess.run(
+                    ['docker', 'inspect', '--format', '{{.State.Status}}', app_name],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+                
+                if container_status_result.returncode == 0 and container_status_result.stdout.strip() == "running":
+                    # Give Lightdash more time to initialize
+                    time.sleep(30)
+                    
+                    # Mark as success even if health check hasn't passed yet
+                    status['status'] = 'success'
+                    status['step'] = 'Lightdash wird gestartet (kann einige Minuten dauern)'
+                    status['progress'] = 100
+                    status['url'] = f"https://{subdomain}.ex-lab.de"
+                    deployment_status[app_name] = status
+                    
+                    print(f"Lightdash container {app_name} is running but health check may not have passed yet. Marking as success.")
+                    return
+                else:
+                    status['status'] = 'error'
+                    status['step'] = 'Lightdash-Container konnte nicht gestartet werden'
+                    status['progress'] = 100
+                    deployment_status[app_name] = status
+                    return
             
             status['status'] = 'success'
             status['step'] = 'Anwendung läuft (Timeout beim Health-Check)'

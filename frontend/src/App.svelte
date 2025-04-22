@@ -11,7 +11,6 @@
   let showToast = false;
   let toastMessage = '';
   let toastType = 'info'; // info, success, error
-  let dnsCountdown = 0; // countdown timer for DNS propagation
   
   // Deployment progress tracking
   let deploymentId = null;
@@ -111,15 +110,6 @@
       if (data.status === 'success') {
         deploymentStatus = 'success';
         deploymentUrl = data.url;
-        
-        // Start countdown for DNS propagation
-        dnsCountdown = 30;
-        const countdownInterval = setInterval(() => {
-          dnsCountdown -= 1;
-          if (dnsCountdown <= 0) {
-            clearInterval(countdownInterval);
-          }
-        }, 1000);
         
         showNotification('Bereitstellung erfolgreich!', 'success');
         
@@ -348,34 +338,28 @@
           <h3 class="text-lg font-medium text-gray-900 mb-1">Bereitstellung erfolgreich!</h3>
           <p class="text-sm text-gray-500 mb-4">Deine Anwendung wird jetzt eingerichtet.</p>
           
-          <div class="rounded-md bg-yellow-50 p-4 mb-4" class:hidden={dnsCountdown <= 0}>
-            <div class="flex">
-              <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                </svg>
-              </div>
-              <div class="ml-3">
-                <h3 class="text-sm font-medium text-yellow-800">Bitte warte, bis die DNS-Einträge aktualisiert sind</h3>
-                <div class="mt-2 text-sm text-yellow-700">
-                  <p>Die Anwendung wird in wenigen Augenblicken verfügbar sein ({dnsCountdown} Sekunden verbleibend).</p>
-                </div>
-              </div>
-            </div>
-          </div>
           
           <div class="rounded-md bg-gray-50 p-4 mb-4">
             <div class="flex">
               <div class="ml-3 w-full">
                 <h3 class="text-sm font-medium text-gray-800">Deine Anwendungs-URL:</h3>
                 <p class="mt-2 text-sm text-blue-700 break-all">
-                  <a href={deploymentUrl} target="_blank" rel="noopener noreferrer" class="font-bold hover:underline" class:pointer-events-none={dnsCountdown > 0}>
+                  <a href={deploymentUrl} target="_blank" rel="noopener noreferrer" class="font-bold hover:underline">
                     {deploymentUrl}
                   </a>
                 </p>
               </div>
             </div>
           </div>
+          
+          <a 
+            href={deploymentUrl} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mb-4"
+          >
+            Anwendung öffnen
+          </a>
           
           {#if selectedApp?.id === 'grafana'}
             <div class="rounded-md bg-blue-50 p-4 mb-4">
@@ -418,7 +402,7 @@
               projectName = generateRandomName();
               selectedApp = null;
             }}
-            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             Weitere Anwendung bereitstellen
           </button>

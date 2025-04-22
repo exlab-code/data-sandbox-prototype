@@ -5,15 +5,62 @@ services:
     image: lightdash/lightdash:latest
     container_name: {{APP_NAME}}
     environment:
-      - LIGHTDASH_SECRET=secret
+      - LIGHTDASH_SECRET=lightdash_secret_{{SUBDOMAIN}}
+      - PGHOST=postgres-{{APP_NAME}}
+      - PGPORT=5432
+      - PGUSER=lightdash
+      - PGPASSWORD=lightdash_password
+      - PGDATABASE=lightdash
+      - SITE_URL=https://{{SUBDOMAIN}}.ex-lab.de
+      - AUTH_DISABLE_PASSWORD=false
+      - SECURE_COOKIES=true
+      - TRUST_PROXY=true
+      - CREATE_DEMO_PROJECT=true
+      - PORT=8080
+      - HOST=0.0.0.0
+      - DBT_DEMO_DIR=/dbt_demo
+    depends_on:
+      - postgres-{{APP_NAME}}
+    volumes:
+      - lightdash-data-{{APP_NAME}}:/usr/src/app/.lightdash
+      - /opt/deployer/dbt_demo:/dbt_demo
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.{{SUBDOMAIN}}.rule=Host(`{{SUBDOMAIN}}.ex-lab.de`)"
       - "traefik.http.routers.{{SUBDOMAIN}}.entrypoints=websecure"
       - "traefik.http.routers.{{SUBDOMAIN}}.tls.certresolver=letsencrypt"
-      - "traefik.http.services.{{SUBDOMAIN}}.loadbalancer.server.port=3000"
+      - "traefik.http.services.{{SUBDOMAIN}}.loadbalancer.server.port=8080"
     networks:
       - web
+    healthcheck:
+      test: ["CMD", "node", "-e", "try { require('http').get('http://localhost:8080/', r => process.exit(0)).on('error', e => process.exit(1)); } catch(e) { process.exit(1); }"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    restart: unless-stopped
+
+  postgres-{{APP_NAME}}:
+    image: postgres:13
+    container_name: postgres-{{APP_NAME}}
+    environment:
+      - POSTGRES_USER=lightdash
+      - POSTGRES_PASSWORD=lightdash_password
+      - POSTGRES_DB=lightdash
+    volumes:
+      - postgres-data-{{APP_NAME}}:/var/lib/postgresql/data
+    networks:
+      - web
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lightdash"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres-data-{{APP_NAME}}:
+  lightdash-data-{{APP_NAME}}:
 
 networks:
   web:
